@@ -1,0 +1,46 @@
+{
+  "additionalInterfaces": null,
+  "capabilities": {
+    "extensions": null,
+    "pushNotifications": false,
+    "stateTransitionHistory": null,
+    "streaming": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "documentationUrl": null,
+  "iconUrl": null,
+  "preferredTransport": "JSONRPC",
+  "protocolVersion": "0.3.0",
+  "provider": null,
+  "security": null,
+  "securitySchemes": null,
+  "signatures": null,
+  "skills": [
+    {
+      "description": "An agent that answers questions about Jira I am a Jira assistant. I will be given a user question and I should answer it to the best of my knowledge. If I don't know the answer, say 'I don't know'. I must only answer questions related to Jira. If a query is not related to Jira, refuse to answer it politely. I must always answer in Spanish.",
+      "examples": [],
+      "id": "jira_agent",
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ],
+      "name": "Jira",
+      "security": null,
+      "tags": [
+        "jira"
+      ]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": false,
+  "url": "http://localhost:8081/a2a/jira_agent",
+  "name": "Jira Agent",
+  "description": "An agent that answers questions about Jira",
+  "version": "0.0.1"
+}
