@@ -27,6 +27,9 @@ An intelligent assistant designed to answer questions about Jira. This agent is 
 ├── Dockerfile            # Production Docker configuration
 ├── Dockerfile_a2a        # Alternative A2A Docker configuration
 ├── docker-compose.yml    # Docker Compose multi-container orchestration
+├── setup_gcp.sh          # Environment configuration script for GCP deployment
+├── cleanup.sh            # GCP resource teardown and cleanup script
+├── lab.sh                # Script to prepare environment, sync dependencies with uv, and deploy the agent
 └── jira_agent/
     ├── __init__.py       # Package entrypoint
     ├── .gitignore        # Local ignore rules
