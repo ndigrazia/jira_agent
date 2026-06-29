@@ -39,7 +39,7 @@
     }
   ],
   "supportsAuthenticatedExtendedCard": false,
-  "url": "http://localhost:8081/a2a/jira_agent",
+  "url": "http://localhost:8080/a2a/jira_agent",
   "name": "Jira Agent",
   "description": "An agent that answers questions about Jira",
   "version": "0.0.1"

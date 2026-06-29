@@ -6,7 +6,8 @@ import httpx
 logging.basicConfig(level=logging.INFO)
 
 async def main():
-    url = "http://localhost:8081/a2a/jira_agent"
+    url = "http://localhost:8080/a2a/jira_agent"
+    #url = "https://jira-agent-service-154372397551.us-central1.run.app/a2a/jira_agent"
     print(f"Connecting to {url} using custom JSON-RPC transport client...")
     
     payload = {

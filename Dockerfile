@@ -19,11 +19,10 @@ RUN uv run python -c "import pathlib; p = pathlib.Path('.venv/lib/python3.12/sit
 # Copy the rest of the application files
 COPY . .
 
-# Expose port 8081 (as configured in agent.json)
-ENV PORT=8081
+# Expose port 8080 (as configured in agent.json)
+ENV PORT=8080
 
-EXPOSE 8081
+EXPOSE 8080
 
 # Run the app using uvicorn via uv run
-CMD ["uv", "run", "adk", "api_server", "--a2a", "--host", "0.0.0.0", "--port", "8081", "."]
-#CMD sh -c "uv run adk api_server --a2a --host 0.0.0.0 --port ${PORT:-8081}"
+CMD ["sh", "-c", "uv run adk api_server --a2a --host 0.0.0.0 --port $PORT ."]
