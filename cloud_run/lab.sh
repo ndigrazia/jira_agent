@@ -24,4 +24,4 @@ adk deploy cloud_run \
   --region=$GOOGLE_CLOUD_LOCATION \
   --service_name=jira-agent-service \
   --with_ui \
-  ./jira_agent
+  ../jira_agent
