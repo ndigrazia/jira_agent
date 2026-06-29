@@ -156,9 +156,9 @@ docker build -f Dockerfile -t jira-agent-a2a .
 ```
 
 #### Run the Container
-Run the container mapping the required port (default `8081`):
+Run the container mapping the required port (default `8080`):
 ```bash
-docker run --name jira-agent-a2a-container -d -p 8081:8081 jira-agent-a2a
+docker run --name jira-agent-a2a-container -d -p 8080:8080 jira-agent-a2a
 ```
 
 ### Verify Status
@@ -171,12 +171,12 @@ You should see log lines indicating:
 ```text
 INFO - Successfully configured A2A agent: jira_agent
 INFO:     Started server process
-INFO:     Uvicorn running on http://0.0.0.0:8081
+INFO:     Uvicorn running on http://0.0.0.0:8080
 ```
 
 You can also retrieve the well-known agent-card using `curl`:
 ```bash
-curl http://localhost:8081/a2a/jira_agent/.well-known/agent-card.json
+curl http://localhost:8080/a2a/jira_agent/.well-known/agent-card.json
 ```
 
 ---
