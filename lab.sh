@@ -8,7 +8,7 @@ source setup_gcp.sh
 
 #echo "Setting up virtual environment..."
 #source .venv/bin/activate
-#pip install -r requirements.txt
+#uv sync
 
 #adk web . 
 
