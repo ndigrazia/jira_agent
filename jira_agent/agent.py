@@ -1,7 +1,7 @@
 import os
 import logging
 from google.adk.agents.llm_agent import LlmAgent
-from google.adk.tools.mcp_tool import McpToolset, SseConnectionParams
+from google.adk.tools.mcp_tool import McpToolset, StreamableHTTPConnectionParams
 from dotenv import load_dotenv
 
 # System instructions for the Jira Assistant.
@@ -32,8 +32,8 @@ def setup_logging() -> None:
 
 
 def create_mcp_toolset() -> McpToolset:
-    """Configure and initialize the MCP SSE Connection with fallback options and logging."""
-    mcp_url = os.environ.get("JIRA_MCP_URL") or os.environ.get("MCP_URL") or "http://localhost:8000/sse"
+    """Configure and initialize the MCP Streamable HTTP Connection with fallback options and logging."""
+    mcp_url = os.environ.get("JIRA_MCP_URL") or os.environ.get("MCP_URL") or "http://localhost:8000/mcp"
     logger.info(f"Initializing McpToolset with URL: {mcp_url}")
 
     # Retrieve and parse authorized tools from .env (comma-separated string, default to empty [])
@@ -45,11 +45,18 @@ def create_mcp_toolset() -> McpToolset:
         tool_filter = []
         logger.info(f"No tool filter configured in environment. Using default: {tool_filter}")
 
-    sse_params = SseConnectionParams(url=mcp_url)
+    # Retrieve MCP token from environment (defaulting to empty string if not present)
+    mcp_token = os.environ.get("JIRA_MCP_TOKEN") or os.environ.get("MCP_TOKEN") or ""
+    headers = {"Autorization": f"Bearer {mcp_token}".strip()}
+
+    streamable_http_params = StreamableHTTPConnectionParams(
+        url=mcp_url,
+        headers=headers
+    )
 
     # McpToolset configuration using dynamic tool filter
     return McpToolset(
-        connection_params=sse_params,
+        connection_params=streamable_http_params,
         tool_filter=tool_filter
     )
 

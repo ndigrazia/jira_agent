@@ -10,7 +10,7 @@ An intelligent assistant designed to answer questions about Jira. This agent is 
 - **Dual Model Provider Support:** 
   - **Gemini:** Directly utilize Google's models like `gemini-3.5-flash` (default).
   - **LiteLLM:** Plug in any LLM provider (e.g., OpenAI, Anthropic, etc.) supported by the `LiteLlm` model wrapper from `google.adk.models.lite_llm`.
-- **Dynamic MCP Integration:** Utilizes `McpToolset` with `SseConnectionParams` to connect directly to a Model Context Protocol (MCP) server over SSE (Server-Sent Events) for real-time tool discovery and execution.
+- **Dynamic MCP Integration:** Utilizes `McpToolset` with `StreamableHTTPConnectionParams` to connect directly to a Model Context Protocol (MCP) server over Streamable HTTP for real-time tool discovery and execution.
 - **Configurable Tool Authorization:** Allows fine-grained control over which tools the agent is permitted to use via the `JIRA_TOOLS_FILTER` or `TOOLS_FILTER` environment variable (comma-separated list of tool names).
 - **Localized Response Support:** Tailored with robust system instructions ensuring the agent always formulates its responses in **Spanish**.
 - **Structured Runtime Logging:** Out-of-the-box standard Python `logging` configuration for clear visibility and debugging of model and MCP connectivity actions.
@@ -47,7 +47,8 @@ The application is highly configurable through environment variables. You can sp
 | `GOOGLE_API_KEY` | Your Google Gemini API credentials. | *Required* (if using Gemini) |
 | `MODEL_PROVIDER` | The LLM provider framework to use (`gemini` or `litellm`). | `gemini` |
 | `MODEL_NAME` | The exact identifier for the model (e.g., `gemini-3.5-flash` or `openai/gpt-4o`). | `gemini-3.5-flash` (for Gemini) or `openai/gpt-4o` (for LiteLLM) |
-| `JIRA_MCP_URL` or `MCP_URL` | The endpoint of your Jira MCP Server supporting SSE. | `http://localhost:8000/sse` |
+| `JIRA_MCP_URL` or `MCP_URL` | The endpoint of your Jira MCP Server supporting Streamable HTTP. | `http://localhost:8000/mcp` |
+| `JIRA_MCP_TOKEN` or `MCP_TOKEN` | Token used to authenticate against the MCP Server via the "Autorization" HTTP header. | `""` |
 | `JIRA_TOOLS_FILTER` or `TOOLS_FILTER` | Comma-separated list of allowed Jira tools (e.g., `getIssue,getBoard`). | `[]` (Allows all tools if empty) |
 
 ---
@@ -74,7 +75,8 @@ The application is highly configurable through environment variables. You can sp
    GOOGLE_API_KEY=your-gemini-api-key
    MODEL_PROVIDER=gemini
    MODEL_NAME=gemini-3.5-flash
-   JIRA_MCP_URL=http://localhost:8000/sse
+   JIRA_MCP_URL=http://localhost:8000/mcp
+   JIRA_MCP_TOKEN=your-mcp-authorization-token
    ```
 
    **For LiteLLM (e.g., OpenAI):**
@@ -82,7 +84,8 @@ The application is highly configurable through environment variables. You can sp
    OPENAI_API_KEY=your-openai-api-key
    MODEL_PROVIDER=litellm
    MODEL_NAME=openai/gpt-4o
-   JIRA_MCP_URL=http://localhost:8000/sse
+   JIRA_MCP_URL=http://localhost:8000/mcp
+   JIRA_MCP_TOKEN=your-mcp-authorization-token
    ```
 
 ---
