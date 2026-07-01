@@ -48,7 +48,7 @@ The application is highly configurable through environment variables. You can sp
 | `MODEL_PROVIDER` | The LLM provider framework to use (`gemini` or `litellm`). | `gemini` |
 | `MODEL_NAME` | The exact identifier for the model (e.g., `gemini-3.5-flash` or `openai/gpt-4o`). | `gemini-3.5-flash` (for Gemini) or `openai/gpt-4o` (for LiteLLM) |
 | `JIRA_MCP_URL` or `MCP_URL` | The endpoint of your Jira MCP Server supporting Streamable HTTP. | `http://localhost:8000/mcp` |
-| `JIRA_MCP_TOKEN` or `MCP_TOKEN` | Token used to authenticate against the MCP Server via the "Autorization" HTTP header. | `""` |
+| `JIRA_MCP_TOKEN` or `MCP_TOKEN` | Token used to authenticate against the MCP Server via the "Authorization" HTTP header. | `""` |
 | `JIRA_TOOLS_FILTER` or `TOOLS_FILTER` | Comma-separated list of allowed Jira tools (e.g., `getIssue,getBoard`). | `[]` (Allows all tools if empty) |
 
 ---

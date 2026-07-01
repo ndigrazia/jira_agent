@@ -47,7 +47,7 @@ def create_mcp_toolset() -> McpToolset:
 
     # Retrieve MCP token from environment (defaulting to empty string if not present)
     mcp_token = os.environ.get("JIRA_MCP_TOKEN") or os.environ.get("MCP_TOKEN") or ""
-    headers = {"Autorization": f"Bearer {mcp_token}".strip()}
+    headers = {"Authorization": f"Bearer {mcp_token}".strip()}
 
     streamable_http_params = StreamableHTTPConnectionParams(
         url=mcp_url,
