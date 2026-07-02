@@ -6,8 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: jira-agent-a2a-container
-    ports:
-      - "8080:8080"
+    network_mode: "host"
     environment:
       - PORT=8080
     env_file:
