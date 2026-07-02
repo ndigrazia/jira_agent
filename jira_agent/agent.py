@@ -70,8 +70,7 @@ def create_model() -> any:
             "LITELLM_API_BASE",
             "LITELLM_API_KEY",
             "LITELLM_MODEL_NAME",
-            "LITELLM_CLIENT_ID",
-            "LITELLM_CLIENT_SECRET"
+            "LITELLM_TOKEN",
         ]
         missing_vars = [var for var in required_vars if not os.environ.get(var)]
         if missing_vars:
@@ -80,9 +79,8 @@ def create_model() -> any:
         api_base = os.environ["LITELLM_API_BASE"]
         api_key = os.environ["LITELLM_API_KEY"]
         model_name = os.environ["LITELLM_MODEL_NAME"]
-        client_id = os.environ["LITELLM_CLIENT_ID"]
-        client_secret = os.environ["LITELLM_CLIENT_SECRET"]
-
+        token = os.environ["LITELLM_TOKEN"]
+        
         from google.adk.models.lite_llm import LiteLlm
         logger.info(f"Initializing LiteLlm model with name: {model_name}")
         return LiteLlm(
@@ -90,8 +88,7 @@ def create_model() -> any:
             api_base=api_base,
             api_key=api_key,
             extra_headers={
-                "client_id": client_id,
-                "client_secret": client_secret
+                "Authorization": f"Bearer {token}"
             }
         )
     else:
