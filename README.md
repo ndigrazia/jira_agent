@@ -25,14 +25,18 @@ An intelligent assistant designed to answer questions about Jira. This agent is 
 ├── pyproject.toml        # UV project configuration and dependencies
 ├── uv.lock               # Deterministic dependency lock file
 ├── Dockerfile            # Production Docker configuration
-├── Dockerfile_a2a        # Alternative A2A Docker configuration
+├── Dockerfile_dev        # Development Docker configuration
 ├── docker-compose.yml    # Docker Compose multi-container orchestration
-├── setup_gcp.sh          # Environment configuration script for GCP deployment
-├── cleanup.sh            # GCP resource teardown and cleanup script
-├── lab.sh                # Script to prepare environment, sync dependencies with uv, and deploy the agent
+├── generate_card.py      # Script to build and export agent.json (agent card)
+├── test_client.py        # Python test client to query the agent over HTTP JSON-RPC
+├── cloud_run/
+│   ├── setup_gcp.sh      # Environment configuration script for GCP deployment
+│   ├── cleanup.sh        # GCP resource teardown and cleanup script
+│   └── lab.sh            # Script to prepare environment, sync dependencies with uv, and deploy the agent
 └── jira_agent/
     ├── __init__.py       # Package entrypoint
     ├── .gitignore        # Local ignore rules
+    ├── agent.json        # Pre-built/cached Agent Card
     └── agent.py          # Main implementation of the Jira LlmAgent
 ```
 
@@ -133,7 +137,13 @@ The agent outputs clear operational logs showing configuration details upon init
 You can build and execute the Jira Assistant Agent containerized using Docker or Docker Compose.
 
 ### Dockerfile Patch Details
-A known issue in the `google-adk` package causes an `UnboundLocalError` (`cannot access local variable 'json' where it is not associated with a value`) during the initialization of the A2A agent. To resolve this, both `Dockerfile` and `Dockerfile_a2a` include a patch step to automatically fix the file structure after dependency synchronization.
+A known issue in the `google-adk` package causes an `UnboundLocalError` (`cannot access local variable 'json' where it is not associated with a value`) during the initialization of the A2A agent. To resolve this, both `Dockerfile` and `Dockerfile_dev` include a patch step to automatically fix the file structure after dependency synchronization.
+
+### Generating the Agent Card (agent.json)
+Before running the agent or deploying it, you can generate the agent card JSON file (`agent.json` / `jira_agent/agent.json`) describing the agent's metadata and tools. Run the generator script using `uv`:
+```bash
+uv run python generate_card.py
+```
 
 ### Using Docker Compose (Recommended)
 We provide a `docker-compose.yml` file to build and run the agent easily with your environment configurations loaded from the `.env` file.
