@@ -1,14 +1,20 @@
-version: '3.8'
-
 services:
   jira-agent:
+    image: jira-agent-a2a-container
     build:
       context: .
       dockerfile: Dockerfile
     container_name: jira-agent-a2a-container
-    network_mode: "host"
+    ports:
+      - 8080:8080
     environment:
-      - PORT=8080
+      - MODEL_PROVIDER=gemini
+      - GOOGLE_GENAI_USE_ENTERPRISE=0
+      - GOOGLE_API_KEY=google_api_key
+      - GEMINI_MODEL_NAME=gemini-2.5-flash
+      - JIRA_MCP_URL=http://host.docker.internal:8000/mcp
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
     restart: unless-stopped

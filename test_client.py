@@ -20,11 +20,11 @@ async def main():
         "method": "message/send",
         "params": {
             "message": {
-                "messageId": "msg-12345",
+                "messageId": "msg-123456",
                 "role": "user",
                 "parts": [
                     {
-                        "text": "¿Qué es Jira?"
+                        "text": "Dame un detalle del issue PFMAR-5379"
                     }
                 ]
             }
