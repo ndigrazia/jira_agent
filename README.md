@@ -1,42 +1,49 @@
 # Jira Assistant Agent
 
-An intelligent assistant designed to answer questions about Jira. This agent is built using the **Google GenAI SDK (ADK) framework**, managed with **uv**, and integrated with the Model Context Protocol (MCP) to access Jira tools dynamically.
+An intelligent assistant designed to answer questions and interact with Jira. This agent is built using the **Google GenAI SDK (ADK) framework**, managed with **uv**, and integrated with the **Model Context Protocol (MCP)** to discover and execute Jira tools dynamically.
 
 ---
 
 ## Features
 
-- **Advanced LLM Orchestration:** Powered by Google's `LlmAgent` supporting multiple model providers.
+- **Advanced LLM Orchestration:** Powered by Google's `LlmAgent` supporting multiple model providers and dynamic toolsets.
 - **Dual Model Provider Support:** 
-  - **Gemini:** Directly utilize Google's models like `gemini-3.5-flash` (default).
-  - **LiteLLM:** Plug in any LLM provider (e.g., OpenAI, Anthropic, etc.) supported by the `LiteLlm` model wrapper from `google.adk.models.lite_llm`.
-- **Dynamic MCP Integration:** Utilizes `McpToolset` with `StreamableHTTPConnectionParams` to connect directly to a Model Context Protocol (MCP) server over Streamable HTTP for real-time tool discovery and execution.
-- **Configurable Tool Authorization:** Allows fine-grained control over which tools the agent is permitted to use via the `JIRA_TOOLS_FILTER` or `TOOLS_FILTER` environment variable (comma-separated list of tool names).
-- **Localized Response Support:** Tailored with robust system instructions ensuring the agent always formulates its responses in **Spanish**.
-- **Structured Runtime Logging:** Out-of-the-box standard Python `logging` configuration for clear visibility and debugging of model and MCP connectivity actions.
-- **Modern Package Management:** Seamlessly managed using [uv](https://github.com/astral-sh/uv) with defined pyproject dependencies.
+  - **Gemini:** Directly utilize Google Gemini models such as `gemini-2.5-flash` (default) or `gemini-1.5-pro`.
+  - **LiteLLM:** Connect to any LLM provider (OpenAI, Anthropic, self-hosted LLMs, etc.) supported by `google.adk.models.lite_llm.LiteLlm`.
+- **Dynamic MCP Integration:** Utilizes `McpToolset` with `StreamableHTTPConnectionParams` to connect directly to an MCP server over Streamable HTTP for real-time tool discovery and execution with Bearer token authentication.
+- **Conversational Memory Integration:** Incorporates ADK conversational memory features:
+  - `load_memory` tool for explicit on-demand memory retrieval by the model.
+  - `after_agent_callback` (`save_session_to_memory`) to automatically persist session events and conversation history across turns.
+- **Specialized Behavior Rules & Prompts:**
+  - **Localized Language:** Formulates all responses in **Spanish**.
+  - **Greeting & Capabilities:** Greets users on the first interaction and outlines core capabilities (issue details, summary search, assignee lookup, description search, manager search).
+  - **Strict Issue Search Rule:** Enforces the use of `searchAndReconsileIssuesUsingJql` for issue lookups by summary or description.
+  - **Manager Search Rule:** Enforces custom field lookups (`customfield_10390`) in JQL for manager queries.
+  - **User Lookup Rule:** Enforces a two-step user discovery workflow (`findUsers` to resolve `accountId`, followed by `getUser`).
+- **Configurable Tool Authorization:** Fine-grained control over allowed Jira tools via `JIRA_TOOLS_FILTER` or `TOOLS_FILTER` (comma-separated list).
+- **A2A Protocol & Agent Card Generation:** Fully compatible with the Agent-to-Agent (A2A) protocol with built-in agent card export (`jira_agent/agent.json`).
+- **Containerized & Cloud-Ready:** Supports Docker, Docker Compose, and Google Cloud Run deployment via `adk deploy`.
 
 ---
 
 ## Repository Structure
 
 ```text
-├── .env                  # Development environment variables
+├── .env                  # Environment variables for local development
 ├── pyproject.toml        # UV project configuration and dependencies
 ├── uv.lock               # Deterministic dependency lock file
 ├── Dockerfile            # Production Docker configuration
 ├── Dockerfile_dev        # Development Docker configuration
 ├── docker-compose.yml    # Docker Compose multi-container orchestration
-├── generate_card.py      # Script to build and export agent.json (agent card)
-├── test_client.py        # Python test client to query the agent over HTTP JSON-RPC
+├── generate_card.py      # Script to build and export agent card (jira_agent/agent.json)
+├── test_client.py        # Python test client querying the agent over JSON-RPC
 ├── cloud_run/
 │   ├── setup_gcp.sh      # Environment configuration script for GCP deployment
 │   ├── cleanup.sh        # GCP resource teardown and cleanup script
-│   └── lab.sh            # Script to prepare environment, sync dependencies with uv, and deploy the agent
+│   └── lab.sh            # Script to deploy the agent to Google Cloud Run
 └── jira_agent/
     ├── __init__.py       # Package entrypoint
-    ├── .gitignore        # Local ignore rules
-    ├── agent.json        # Pre-built/cached Agent Card
+    ├── agent.json        # Pre-built / exported Agent Card (A2A metadata)
     └── agent.py          # Main implementation of the Jira LlmAgent
 ```
 
@@ -44,16 +51,21 @@ An intelligent assistant designed to answer questions about Jira. This agent is 
 
 ## Configuration Options
 
-The application is highly configurable through environment variables. You can specify these variables in a `.env` file at the root or within the `jira_agent/` directory:
+The application is configured using environment variables defined in a `.env` file at the root or within `jira_agent/`:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `GOOGLE_API_KEY` | Your Google Gemini API credentials. | *Required* (if using Gemini) |
-| `MODEL_PROVIDER` | The LLM provider framework to use (`gemini` or `litellm`). | `gemini` |
-| `MODEL_NAME` | The exact identifier for the model (e.g., `gemini-3.5-flash` or `openai/gpt-4o`). | `gemini-3.5-flash` (for Gemini) or `openai/gpt-4o` (for LiteLLM) |
-| `JIRA_MCP_URL` or `MCP_URL` | The endpoint of your Jira MCP Server supporting Streamable HTTP. | `http://localhost:8000/mcp` |
-| `JIRA_MCP_TOKEN` or `MCP_TOKEN` | Token used to authenticate against the MCP Server via the "Authorization" HTTP header. | `""` |
-| `JIRA_TOOLS_FILTER` or `TOOLS_FILTER` | Comma-separated list of allowed Jira tools (e.g., `getIssue,getBoard`). | `[]` (Allows all tools if empty) |
+| `MODEL_PROVIDER` | LLM provider framework (`gemini` or `litellm`). | `gemini` |
+| `GOOGLE_API_KEY` | Google Gemini API key (required if `MODEL_PROVIDER=gemini`). | — |
+| `GEMINI_MODEL_NAME` | Gemini model name identifier. | `gemini-2.5-flash` |
+| `GOOGLE_GENAI_USE_ENTERPRISE` | Set to `1` or `0` for Enterprise Gemini endpoint access. | `0` |
+| `LITELLM_API_BASE` | Base endpoint URL for LiteLLM proxy (required if `MODEL_PROVIDER=litellm`). | — |
+| `LITELLM_API_KEY` | API key for LiteLLM provider (required if `MODEL_PROVIDER=litellm`). | — |
+| `LITELLM_MODEL_NAME` | Model identifier for LiteLLM (e.g. `openai/gpt-4o`). | — |
+| `LITELLM_TOKEN` | Bearer token for LiteLLM authentication headers. | — |
+| `JIRA_MCP_URL` or `MCP_URL` | Endpoint of the Jira MCP Server (Streamable HTTP). | `http://localhost:8000/mcp` |
+| `JIRA_MCP_TOKEN` or `MCP_TOKEN` | Bearer token used for MCP Server authentication. | `""` |
+| `JIRA_TOOLS_FILTER` or `TOOLS_FILTER` | Comma-separated list of allowed Jira tool names (e.g. `getIssue,findUsers`). | `[]` (All tools allowed) |
 
 ---
 
@@ -62,7 +74,8 @@ The application is highly configurable through environment variables. You can sp
 ### Prerequisites
 
 - **Python 3.12+**
-- **uv** (Fast Python Package Installer and Resolver)
+- **uv** (Fast Python package manager)
+- **Docker & Docker Compose** (Optional, for containerized execution)
 
 ### Setup
 
@@ -76,131 +89,159 @@ The application is highly configurable through environment variables. You can sp
 
    **For Gemini (Default):**
    ```env
-   GOOGLE_API_KEY=your-gemini-api-key
    MODEL_PROVIDER=gemini
-   MODEL_NAME=gemini-3.5-flash
+   GOOGLE_API_KEY=your-google-gemini-api-key
+   GEMINI_MODEL_NAME=gemini-2.5-flash
+   GOOGLE_GENAI_USE_ENTERPRISE=0
    JIRA_MCP_URL=http://localhost:8000/mcp
-   JIRA_MCP_TOKEN=your-mcp-authorization-token
+   JIRA_MCP_TOKEN=your-mcp-bearer-token
    ```
 
-   **For LiteLLM (e.g., OpenAI):**
+   **For LiteLLM:**
    ```env
-   OPENAI_API_KEY=your-openai-api-key
    MODEL_PROVIDER=litellm
-   MODEL_NAME=openai/gpt-4o
+   LITELLM_API_BASE=https://api.openai.com/v1
+   LITELLM_API_KEY=your-litellm-api-key
+   LITELLM_MODEL_NAME=openai/gpt-4o
+   LITELLM_TOKEN=your-litellm-bearer-token
    JIRA_MCP_URL=http://localhost:8000/mcp
-   JIRA_MCP_TOKEN=your-mcp-authorization-token
+   JIRA_MCP_TOKEN=your-mcp-bearer-token
    ```
 
 ---
 
 ## Code Architecture
 
-The agent code in `jira_agent/agent.py` is semantically structured into separate functions to improve modularity, readability, and ease of testing:
+The agent implementation in `jira_agent/agent.py` is modularized into dedicated functions:
 
-- **`load_environment_configs()`**: Loads environment variables from `.env` files with proper fallback paths.
-- **`setup_logging()`**: Configures the standard Python `logging` framework.
-- **`create_mcp_toolset()`**: Initializes and configures the `McpToolset` with connection parameters and dynamic tool filtering.
-- **`create_model()`**: Validates and dynamically configures the LLM provider (either standard Gemini models or LiteLLM wrapper).
-- **`create_agent()`**: Combines the prompt instructions, LLM model, and MCP toolset to build and return the configured `LlmAgent`.
+- **`load_environment_configs()`**: Loads environment variables from `.env` files with proper fallback paths across the workspace.
+- **`setup_logging()`**: Configures Python's standard `logging` with structured operational diagnostics.
+- **`create_mcp_toolset()`**: Configures `McpToolset` with `StreamableHTTPConnectionParams`, Bearer token authentication headers, and dynamic tool filtering.
+- **`create_model()`**: Instantiates the selected model provider (either standard Gemini models or LiteLLM wrapper with custom headers).
+- **`save_session_to_memory()`**: An asynchronous `after_agent_callback` that commits session events to the active ADK memory service via `add_session_to_memory()`.
+- **`create_agent()`**: Constructs the `LlmAgent` combining system prompt instructions, LLM model, MCP toolset, `load_memory` tool, and the memory persistence callback.
 
 ---
 
 ## Usage
+
+### 1. Generating the Agent Card (`agent.json`)
+
+To generate or update the A2A Agent Card (`jira_agent/agent.json`), execute:
+
+```bash
+uv run python generate_card.py
+```
+
+### 2. Programmatic Usage in Python
 
 You can import and interact with the configured `root_agent` inside your Python workflow:
 
 ```python
 from jira_agent.agent import root_agent
 
-# Examine the configured agent properties
+# Examine configured agent properties
 print(f"Agent Name: {root_agent.name}")
 print(f"Model: {root_agent.model}")
-print(f"System Instruction: {root_agent.instruction}")
-
-# Use root_agent inside your application flow to handle queries
-# (Make sure your environment variables and MCP Server are active)
+print(f"Description: {root_agent.description}")
+print(f"Instruction: {root_agent.instruction}")
 ```
 
-### Logging & Diagnostics
+### 3. Logging & Diagnostics
 
-The agent outputs clear operational logs showing configuration details upon initialization:
-- McpToolset connection endpoints
-- Current active tool filters
+Upon startup, the agent outputs diagnostic logs detailing:
+- MCP Server connection URL
+- Configured active tool filters
 - Model provider and model name selection
-- Initialization statuses
+- Agent initialization statuses
 
 ---
 
 ## Running with Docker
 
-You can build and execute the Jira Assistant Agent containerized using Docker or Docker Compose.
+You can build and run the containerized Jira Assistant Agent using Docker or Docker Compose.
 
 ### Dockerfile Patch Details
-A known issue in the `google-adk` package causes an `UnboundLocalError` (`cannot access local variable 'json' where it is not associated with a value`) during the initialization of the A2A agent. To resolve this, both `Dockerfile` and `Dockerfile_dev` include a patch step to automatically fix the file structure after dependency synchronization.
-
-### Generating the Agent Card (agent.json)
-Before running the agent or deploying it, you can generate the agent card JSON file (`agent.json` / `jira_agent/agent.json`) describing the agent's metadata and tools. Run the generator script using `uv`:
-```bash
-uv run python generate_card.py
-```
+A known issue in the `google-adk` package causes an `UnboundLocalError` (`cannot access local variable 'json' where it is not associated with a value`) during the initialization of the A2A agent. Both `Dockerfile` and `Dockerfile_dev` include an automated patch step during build time to ensure seamless container execution.
 
 ### Using Docker Compose (Recommended)
-We provide a `docker-compose.yml` file to build and run the agent easily with your environment configurations loaded from the `.env` file.
 
-To start the agent:
+Start the agent container with environment variables loaded from `.env`:
+
 ```bash
 docker-compose up -d --build
 ```
 
-To stop the agent:
+To stop the agent container:
+
 ```bash
 docker-compose down
 ```
 
----
-
 ### Using Docker CLI
 
-#### Build the Image
-To build the Docker image with the ADK runtime manually:
-```bash
-docker build -f Dockerfile -t jira-agent-a2a .
-```
+1. **Build the image:**
+   ```bash
+   docker build -f Dockerfile -t jira-agent-a2a .
+   ```
 
-#### Run the Container
-Run the container mapping the required port (default `8080`):
-```bash
-docker run --name jira-agent-a2a-container -d -p 8080:8080 jira-agent-a2a
-```
+2. **Run the container:**
+   ```bash
+   docker run --name jira-agent-a2a-container -d -p 8080:8080 --env-file .env jira-agent-a2a
+   ```
 
-### Verify Status
-Check the logs of the running container to ensure the A2A agent configured successfully without errors:
-```bash
-docker logs jira-agent-a2a-container
-```
+3. **Check container logs:**
+   ```bash
+   docker logs jira-agent-a2a-container
+   ```
 
-You should see log lines indicating:
-```text
-INFO - Successfully configured A2A agent: jira_agent
-INFO:     Started server process
-INFO:     Uvicorn running on http://0.0.0.0:8080
-```
+   Expected output:
+   ```text
+   INFO - Successfully configured A2A agent: jira_agent
+   INFO:     Started server process
+   INFO:     Uvicorn running on http://0.0.0.0:8080
+   ```
 
-You can also retrieve the well-known agent-card using `curl`:
-```bash
-curl http://localhost:8080/a2a/jira_agent/.well-known/agent-card.json
-```
+4. **Verify the Agent Card endpoint:**
+   ```bash
+   curl http://localhost:8080/a2a/jira_agent/.well-known/agent-card.json
+   ```
 
 ---
 
-## Testing the Agent with the Python Test Client
+## Testing with the Python Test Client
 
-We have created a dedicated test client (`test_client.py`) that queries the agent API server using a standardized JSON-RPC `message/send` payload.
+A dedicated test client is provided in `test_client.py` to query the agent API server using a standardized JSON-RPC `message/send` payload.
 
-To run the test client and get a live response:
+Run the test client:
+
 ```bash
 uv run python test_client.py
 ```
 
-It sends a query in Spanish and displays the JSON-RPC response returned by the container.
+The test client sends a query to the agent endpoint and outputs the structured response payload returned by the container.
+
+---
+
+## Deployment to Google Cloud Run
+
+Deployment scripts and configuration files for Google Cloud Run are located in `cloud_run/`:
+
+1. **Set up GCP configuration (`cloud_run/setup_gcp.sh`):**
+   ```bash
+   export GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+   export GOOGLE_CLOUD_LOCATION="us-central1"
+   export GOOGLE_API_KEY="your-gemini-api-key"
+   ```
+
+2. **Deploy using ADK CLI:**
+   ```bash
+   cd cloud_run
+   bash lab.sh
+   ```
+
+3. **Teardown / Cleanup resources:**
+   ```bash
+   cd cloud_run
+   bash cleanup.sh
+   ```

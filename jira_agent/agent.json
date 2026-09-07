@@ -2,9 +2,9 @@
   "additionalInterfaces": null,
   "capabilities": {
     "extensions": null,
-    "pushNotifications": false,
+    "pushNotifications": null,
     "stateTransitionHistory": null,
-    "streaming": true
+    "streaming": null
   },
   "defaultInputModes": [
     "text/plain"
@@ -12,8 +12,10 @@
   "defaultOutputModes": [
     "text/plain"
   ],
+  "description": "An agent that answers questions about Jira",
   "documentationUrl": null,
   "iconUrl": null,
+  "name": "jira_agent",
   "preferredTransport": "JSONRPC",
   "protocolVersion": "0.3.0",
   "provider": null,
@@ -22,25 +24,84 @@
   "signatures": null,
   "skills": [
     {
-      "description": "An agent that answers questions about Jira I am a Jira assistant. I will be given a user question and I should answer it to the best of my knowledge. If I don't know the answer, say 'I don't know'. I must only answer questions related to Jira. If a query is not related to Jira, refuse to answer it politely. I must always answer in Spanish.",
+      "description": "An agent that answers questions about Jira I am a Jira assistant. I will be given a user question and I should answer it to the best of my knowledge. If I don't know the answer, say 'I don't know'. I must only answer questions related to Jira. If a query is not related to Jira, refuse to answer it politely. I must always answer in Spanish. GREETING AND CAPABILITIES RULE: The first time I interact with the user, I MUST greet them politely and provide the following list of capabilities: I can do: 1. Get info of an specific issues with details. 2. Get a list of issues based on a summary. 3. Get issues assigned to a user. 4. Get a list of issues based on a description. Do not repeat the greeting and capabilities list in subsequent interactions unless explicitly requested. ISSUE SEARCH RULE: Whenever I need to find Jira issues based on a summary or description, I MUST always use the searchAndReconsileIssuesUsingJql tool. Do NOT use any other tool to search for issues by summary or description. USER LOOKUP RULE: Whenever I need details about a Jira user, I MUST follow this sequence: 1. Call findUsers to search for the user and obtain their accountId. 2. Use the accountId returned by findUsers. 3. Call getUser with that accountId to retrieve the user's details. I MUST NOT call getUser directly using a username, email, display name, or any other identifier. I MUST NOT call getUser before findUsers has returned the accountId.",
       "examples": [],
       "id": "jira_agent",
-      "inputModes": [
-        "text/plain"
-      ],
-      "outputModes": [
-        "text/plain"
-      ],
-      "name": "Jira",
+      "inputModes": null,
+      "name": "model",
+      "outputModes": null,
       "security": null,
       "tags": [
-        "jira"
+        "llm"
+      ]
+    },
+    {
+      "description": "Get issue\n\nReturns the details for an issue.\n\nThe issue is identified by its ID or key, however, if the identifier doesn't match an issue, a case-insensitive search and check for moved issues is performed. If a matching issue is found its details are returned, a 302 or other redirect is **not** returned. The issue key returned in the response is the key of the issue found.\n\nThis operation can be accessed anonymously.\n\n**[Permissions](#permissions) required:**\n\n *  *Browse projects* [project permission](https://confluence.atlassian.com/x/yodKLg) for the project that the issue is in.\n *  If [issue-level security](https://confluence.atlassian.com/x/J4lKLg) is configured, issue-level security permission to view the issue.",
+      "examples": null,
+      "id": "jira_agent-getIssue",
+      "inputModes": null,
+      "name": "getIssue",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "llm",
+        "tools"
+      ]
+    },
+    {
+      "description": "Search for issues using JQL enhanced search (GET)\n\nSearches for issues using [JQL](https://confluence.atlassian.com/x/egORLQ). Recent updates might not be immediately visible in the returned search results. If you need [read-after-write](https://developer.atlassian.com/cloud/jira/platform/search-and-reconcile/) consistency, you can utilize the `reconcileIssues` parameter to ensure stronger consistency assurances. This operation can be accessed anonymously.\n\nIf the JQL query expression is too large to be encoded as a query parameter, use the [POST](#api-rest-api-3-search-post) version of this resource.\n\n**[Permissions](#permissions) required:** Issues are included in the response where the user has:\n\n *  *Browse projects* [project permission](https://confluence.atlassian.com/x/yodKLg) for the project containing the issue.\n *  If [issue-level security](https://confluence.atlassian.com/x/J4lKLg) is configured, issue-level security permission to view the issue.",
+      "examples": null,
+      "id": "jira_agent-searchAndReconsileIssuesUsingJql",
+      "inputModes": null,
+      "name": "searchAndReconsileIssuesUsingJql",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "llm",
+        "tools"
+      ]
+    },
+    {
+      "description": "Get user\n\nReturns a user.\n\nPrivacy controls are applied to the response based on the user's preferences. This could mean, for example, that the user's email address is hidden. See the [Profile visibility overview](https://developer.atlassian.com/cloud/jira/platform/profile-visibility/) for more details.\n\n**[Permissions](#permissions) required:** *Browse users and groups* [global permission](https://confluence.atlassian.com/x/x4dKLg).",
+      "examples": null,
+      "id": "jira_agent-getUser",
+      "inputModes": null,
+      "name": "getUser",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "llm",
+        "tools"
+      ]
+    },
+    {
+      "description": "Find users\n\nReturns a list of active users that match the search string and property.\n\nThis operation first applies a filter to match the search string and property, and then takes the filtered users in the range defined by `startAt` and `maxResults`, up to the thousandth user. To get all the users who match the search string and property, use [Get all users](#api-rest-api-3-users-search-get) and filter the records in your code.\n\nThis operation can be accessed anonymously.\n\nPrivacy controls are applied to the response based on the users' preferences. This could mean, for example, that the user's email address is hidden. See the [Profile visibility overview](https://developer.atlassian.com/cloud/jira/platform/profile-visibility/) for more details.\n\n**[Permissions](#permissions) required:** *Browse users and groups* [global permission](https://confluence.atlassian.com/x/x4dKLg). Anonymous calls or calls by users without the required permission return empty search results.",
+      "examples": null,
+      "id": "jira_agent-findUsers",
+      "inputModes": null,
+      "name": "findUsers",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "llm",
+        "tools"
+      ]
+    },
+    {
+      "description": "Loads the memory for the current user.\n\nArgs:\n  query: The query to load the memory for.\n\nReturns:\n  A list of memory results.",
+      "examples": null,
+      "id": "jira_agent-load_memory",
+      "inputModes": null,
+      "name": "load_memory",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "llm",
+        "tools"
       ]
     }
   ],
   "supportsAuthenticatedExtendedCard": false,
-  "url": "http://localhost:8080/a2a/jira_agent",
-  "name": "Jira Agent",
-  "description": "An agent that answers questions about Jira",
+  "url": "http://localhost:80/a2a",
   "version": "0.0.1"
 }

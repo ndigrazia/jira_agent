@@ -6,9 +6,11 @@ async def main():
     builder = AgentCardBuilder(agent=root_agent)
     card = await builder.build()
     card_json = card.model_dump_json(indent=2)
-    with open("agent.json", "w") as f:
+    #with open("agent.json", "w") as f:
+    #    f.write(card_json)
+    with open("jira_agent/agent.json", "w") as f:
         f.write(card_json)
-    print("Agent card successfully created and written to agent.json")
+    print("Agent card successfully created and written to agent.json and jira_agent/agent.json")
 
 if __name__ == "__main__":
     asyncio.run(main())
