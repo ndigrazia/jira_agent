@@ -69,8 +69,7 @@ SYSTEM_INSTRUCTION = (
     "Do NOT use any other tool to search for issues by summary or description. "
 
     "MANAGER SEARCH RULE: Whenever you need to find Jira issues containing information about a manager "
-    "based on the manager's data, you MUST use the  C                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            tool with the "
-    "customfield_10390 field. "
+    "based on the manager's data, you MUST use the customfield_10390 field. "
     "The manager information MUST be searched using customfield_10390 in the JQL query. "
     "For example, use JQL such as 'customfield_10390 ~ \"<manager data>\"' when appropriate. "
     "The value used in customfield_10390 MUST be based on the manager information provided by the user. "
