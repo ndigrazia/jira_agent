@@ -1,87 +1,20 @@
 import os
 import logging
+
+import asyncio
+
+from jira_agent.prompts import build_instructions
+
 from google.adk.agents.llm_agent import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
-from google.adk.tools import load_memory
 from google.adk.tools.mcp_tool import McpToolset, StreamableHTTPConnectionParams
+from google.adk.tools.preload_memory_tool import PreloadMemoryTool
+
+from google.genai import types
+
 from dotenv import load_dotenv
+from typing import Optional
 
-# System instructions for the Jira Assistant.
-# Cleaned of leading/trailing indentation/whitespace for optimal prompt quality.
-#SYSTEM_INSTRUCTION = (
-#    "You are a Jira assistant. You will be given a user question and you should answer it to the best of "
-#    "your knowledge. If you don't know the answer, say 'I don't know'. You must only answer questions "
-#    "related to Jira. If a query is not related to Jira, refuse to answer it politely. You must always "
-#    "answer in Spanish. "
-#    "USER LOOKUP RULE: Whenever you need details about a Jira user, you MUST follow this sequence: "
-#    "1. Call findUsers to search for the user and obtain their accountId. "
-#    "2. Use the accountId returned by findUsers. "
-#    "3. Call getUser with that accountId to retrieve the user's details. "
-#    "You MUST NOT call getUser directly using a username, email, display name, or any other identifier. "
-#    "You MUST NOT call getUser before findUsers has returned the accountId."
-#).strip()
-
-#SYSTEM_INSTRUCTION = (
-#    "You are a Jira assistant. You will be given a user question and you should answer it to the best of "
-#    "your knowledge. If you don't know the answer, say 'I don't know'. You must only answer questions "
-#    "related to Jira. If a query is not related to Jira, refuse to answer it politely. You must always "
-#    "answer in Spanish. "
-#
-#    "GREETING AND CAPABILITIES RULE: The first time you interact with the user, you MUST greet them "
-#    "politely and provide the following list of capabilities: "
-#    "You can do: "
-#    "1. Get info of an specific issues with details. "
-#    "2. Get a list of issues based on a summary. "
-#    "3. Get issues assigned to a user. "
-#    "4. Get a list of issues based on a description. "
-#    "Do not repeat the greeting and capabilities list in subsequent interactions unless explicitly requested. "
-#
-#    "ISSUE SEARCH RULE: Whenever you need to find Jira issues based on a summary or description, "
-#    "you MUST always use the searchAndReconsileIssuesUsingJql tool. "
-#    "Do NOT use any other tool to search for issues by summary or description. "
-#
-#    "USER LOOKUP RULE: Whenever you need details about a Jira user, you MUST follow this sequence: "
-#    "1. Call findUsers to search for the user and obtain their accountId. "
-#    "2. Use the accountId returned by findUsers. "
-#    "3. Call getUser with that accountId to retrieve the user's details. "
-#    "You MUST NOT call getUser directly using a username, email, display name, or any other identifier. "
-#    "You MUST NOT call getUser before findUsers has returned the accountId."
-#).strip()
-
-SYSTEM_INSTRUCTION = (
-    "You are a Jira assistant. You will be given a user question and you should answer it to the best of "
-    "your knowledge. If you don't know the answer, say 'I don't know'. You must only answer questions "
-    "related to Jira. If a query is not related to Jira, refuse to answer it politely. You must always "
-    "answer in Spanish. "
-
-    "GREETING AND CAPABILITIES RULE: The first time you interact with the user, you MUST greet them "
-    "politely and provide the following list of capabilities: "
-    "You can do: "
-    "1. Get info of an specific issue with details. "
-    "2. Get a list of issues based on a summary. "
-    "3. Get issues assigned to a user. "
-    "4. Get a list of issues based on a description. "
-    "5. Get issues based on manager information. "
-    "Do not repeat the greeting and capabilities list in subsequent interactions unless explicitly requested. "
-
-    "ISSUE SEARCH RULE: Whenever you need to find Jira issues based on a summary or description, "
-    "you MUST always use the searchAndReconsileIssuesUsingJql tool. "
-    "Do NOT use any other tool to search for issues by summary or description. "
-
-    "MANAGER SEARCH RULE: Whenever you need to find Jira issues containing information about a manager "
-    "based on the manager's data, you MUST use the customfield_10390 field. "
-    "The manager information MUST be searched using customfield_10390 in the JQL query. "
-    "For example, use JQL such as 'customfield_10390 ~ \"<manager data>\"' when appropriate. "
-    "The value used in customfield_10390 MUST be based on the manager information provided by the user. "
-    "Do NOT use another field or tool to search for manager information when customfield_10390 is applicable. "
-
-    "USER LOOKUP RULE: Whenever you need details about a Jira user, you MUST follow this sequence: "
-    "1. Call findUsers to search for the user and obtain their accountId. "
-    "2. Use the accountId returned by findUsers. "
-    "3. Call getUser with that accountId to retrieve the user's details. "
-    "You MUST NOT call getUser directly using a username, email, display name, or any other identifier. "
-    "You MUST NOT call getUser before findUsers has returned the accountId."
-).strip()
 
 logger = logging.getLogger(__name__)
 
@@ -167,34 +100,47 @@ def create_model() -> any:
         return agent_model
 
 
-async def save_session_to_memory(callback_context: CallbackContext, **kwargs) -> None:
-    """Save conversation events to memory service at the end of each interaction."""
-    try:
-        await callback_context.add_session_to_memory()
-        logger.info("Successfully saved session events to memory.")
-    except Exception as e:
-        logger.warning(f"Failed to save session to memory: {e}")
+def load_memory() -> bool:
+    USE_MEMORY_BANK = os.getenv("USE_MEMORY_BANK", "false").lower() == "true"
+    return USE_MEMORY_BANK
 
 
+async def add_session_to_memory(callback_context: CallbackContext) -> Optional[types.Content]:
+    """Automatically save completed sessions to memory bank in the background"""
+    if hasattr(callback_context, "_invocation_context"):
+        invocation_context = callback_context._invocation_context
+        if invocation_context.memory_service:
+            # Use create_task to run this in the background without blocking the response
+            asyncio.create_task(
+                invocation_context.memory_service.add_session_to_memory(
+                    invocation_context.session
+                )
+            )
+            logger.info("Scheduled session save to memory bank in background")
+            
+            
 def create_agent() -> LlmAgent:
     """Create and return the main configured Jira LlmAgent."""
+    
     mcp_toolset = create_mcp_toolset()
     model = create_model()
 
     # Root agent configuration with MCP tools and memory capabilities
     return LlmAgent(
         model=model,
-        instruction=SYSTEM_INSTRUCTION,
+        instruction=build_instructions(),
         name='jira_agent',
         description='An agent that answers questions about Jira',
-        tools=[mcp_toolset, load_memory],
-        after_agent_callback=save_session_to_memory,
+        tools=[mcp_toolset, PreloadMemoryTool() if load_memory() else None],
+        after_agent_callback=add_session_to_memory if load_memory() else None
     )
 
 
 # Perform initialization when the module is imported
 load_environment_configs()
+
 setup_logging()
+
 root_agent = create_agent()
 
 # Export the agent using the A2A protocol as a Starlette application (app)
