@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+.python-version
+.adk/
+*.db
+sa-key.json
+gcp_test_key.json

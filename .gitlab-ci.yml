@@ -1,0 +1,131 @@
+stages:
+  - deploy
+
+variables:
+  GCP_PROJECT_ID_DEFAULT: "tma-gemini-enterprise"
+  GCP_REGION_DEFAULT: "us-central1"
+  DISPLAY_NAME: "jira-adk-agent"
+  UV_LINK_MODE: "copy"
+
+  # Runner Tag
+  RUNNER_1: "gke-runner-group"
+  
+default:
+  tags:
+    - $RUNNER_1
+
+deploy_agent_engine:
+  stage: deploy
+  image: google/cloud-sdk:slim
+  variables:
+    CLOUDSDK_CONFIG: "${CI_PROJECT_DIR}/.gcloud"
+  before_script:
+    - |
+      # 1. Validate and write agent runtime configuration
+      if [ -n "$AGENT_ENV_CONTENT" ]; then
+        echo "$AGENT_ENV_CONTENT" > jira_agent/.env
+      else
+        echo "ERROR: AGENT_ENV_CONTENT variable is required but not set." >&2
+        exit 1
+      fi
+
+      if [ -f jira_agent/.env ]; then
+        echo "Agent runtime configuration (.env) file created successfully."
+        ENV_PROJECT_ID=$(grep -E '^GOOGLE_CLOUD_PROJECT=' jira_agent/.env | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r')
+        ENV_REGION=$(grep -E '^GOOGLE_CLOUD_LOCATION=' jira_agent/.env | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r')
+        echo "Extracted GOOGLE_CLOUD_PROJECT from .env: ${ENV_PROJECT_ID}"
+        echo "Extracted GOOGLE_CLOUD_LOCATION from .env: ${ENV_REGION}"
+      fi
+
+      export GCP_PROJECT_ID="${ENV_PROJECT_ID:-$GCP_PROJECT_ID_DEFAULT}"
+      export GCP_REGION="${ENV_REGION:-$GCP_REGION_DEFAULT}"
+
+      echo "Active GCP Project ID: ${GCP_PROJECT_ID}"
+      echo "Active GCP Region: ${GCP_REGION}"
+
+    - |
+      # 2. Authenticate with GCP and configure ADC
+      if [ -n "$GCP_SERVICE_KEY" ]; then
+        echo "$GCP_SERVICE_KEY" > /tmp/gcp_key.json
+      elif [ -n "$GCP_SA_KEY" ]; then
+        echo "$GCP_SA_KEY" > /tmp/gcp_key.json
+      else
+        echo "ERROR: Neither GCP_SERVICE_KEY nor GCP_SA_KEY is set." >&2
+        exit 1
+      fi
+
+      gcloud auth activate-service-account --key-file=/tmp/gcp_key.json
+      gcloud config set project "$GCP_PROJECT_ID"
+      export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcp_key.json"
+
+    - |
+      # 3. Validate and write MCP service account key
+      if [ -n "$JIRA_MCP_SERVICE_KEY" ]; then
+        echo "$JIRA_MCP_SERVICE_KEY" > jira_agent/sa-key.json
+      else
+        echo "ERROR: JIRA_MCP_SERVICE_KEY variable is required but not set." >&2
+        exit 1
+      fi
+
+    - |
+      # 4. Install UV and sync dependencies
+      curl -LsSf https://astral.sh/uv/install.sh | sh
+      export PATH="$HOME/.local/bin:$PATH"
+      uv sync --frozen
+
+  script:
+    - export PATH="$HOME/.local/bin:$PATH"
+    - echo "Fetching Google Access Token..."
+    - ACCESS_TOKEN=$(gcloud auth print-access-token)
+    
+    - echo "Querying Vertex AI Reasoning Engines for project ${GCP_PROJECT_ID} in region ${GCP_REGION}..."
+    - |
+      curl -s -X GET \
+        -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+        -H "Content-Type: application/json" \
+        "https://${GCP_REGION}-aiplatform.googleapis.com/v1/projects/${GCP_PROJECT_ID}/locations/${GCP_REGION}/reasoningEngines" \
+        -o /tmp/reasoning_engines.json
+
+    - |
+      AGENT_RESOURCE_NAME=$(python3 -c "
+      import os, json
+      target = os.environ.get('DISPLAY_NAME', '')
+      with open('/tmp/reasoning_engines.json', 'r') as f:
+          data = json.load(f)
+      for re in data.get('reasoningEngines', []):
+          if re.get('displayName') == target:
+              print(re.get('name', ''))
+              break
+      ")
+
+      AGENT_ENGINE_ID=$(echo "$AGENT_RESOURCE_NAME" | awk -F'/' '{print $NF}')
+
+      echo "Agent Resource Name: ${AGENT_RESOURCE_NAME}"
+      echo "Agent Engine ID: ${AGENT_ENGINE_ID}"
+
+      if [ -n "$AGENT_ENGINE_ID" ]; then
+        echo "Updating existing Reasoning Engine (ID: ${AGENT_ENGINE_ID})...."
+        uv run adk deploy agent_engine \
+          --project="${GCP_PROJECT_ID}" \
+          --region="${GCP_REGION}" \
+          --agent_engine_id="${AGENT_ENGINE_ID}" \
+          --display_name="${DISPLAY_NAME}" \
+          jira_agent
+      else
+        echo "Creating new Reasoning Engine (${DISPLAY_NAME})...."
+         uv run adk deploy agent_engine \
+          --project="${GCP_PROJECT_ID}" \
+          --region="${GCP_REGION}" \
+          --display_name="${DISPLAY_NAME}" \
+          jira_agent
+      fi
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_TAG'
+    - when: manual
+
+
+
+
+
